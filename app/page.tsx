@@ -1,22 +1,35 @@
 "use client";
 import { useState } from "react";
 export default function Home() {
-  const [topic, setTopic] = useState("");
-const [audience, setAudience] = useState("");
+const [address, setAddress] = useState("");
+const [purchasePrice, setPurchasePrice] = useState("");
+const [arv, setArv] = useState("");
+const [rent, setRent] = useState("");
+const [repairCost, setRepairCost] = useState("");
 const [notes, setNotes] = useState("");
 const [strategy, setStrategy] = useState("");
 const [result, setResult] = useState<{
   score: number;
+  risk: string;
   strategy: string;
   recommendation: string;
   summary: string;
+  signals: string[];
+  mao: number;
+spread: number;
+marginPercent: number;
+rentToPricePercent: number;
+discountPercent: number;
 } | null>(null);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
 
 function clearForm() {
-  setTopic("");
-setAudience("");
+setAddress("");
+setPurchasePrice("");
+setArv("");
+setRent("");
+setRepairCost("");
 setNotes("");
 setStrategy("");
 setResult(null);
@@ -36,11 +49,14 @@ async function analyzeDeal() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        topic,
-        audience,
-        notes,
-        strategy,
-      }),
+  address,
+  purchasePrice,
+  arv,
+  rent,
+  repairCost,
+  notes,
+  strategy,
+}),
     });
 
     const data = await response.json();
@@ -59,7 +75,19 @@ async function analyzeDeal() {
   }
 }
 
-const disabled = !topic.trim() || !audience.trim() || !strategy.trim();
+const disabled =
+  !address.trim() ||
+  !purchasePrice.trim() ||
+  !arv.trim() ||
+  !strategy.trim();
+
+  let dealLabel = "";
+
+if (result) {
+  if (result.score >= 80) dealLabel = "Strong Deal";
+  else if (result.score >= 60) dealLabel = "Borderline";
+  else dealLabel = "Avoid";
+}
 
   return (
     <main
@@ -92,28 +120,44 @@ const disabled = !topic.trim() || !audience.trim() || !strategy.trim();
 
 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
   <input
-    placeholder="Deal topic (e.g. Fix & Flip in Houston)"
-    value={topic}
-    onChange={(e) => setTopic(e.target.value)}
-    style={{
-      padding: 12,
-      borderRadius: 8,
-      border: "1px solid #ccc",
-      fontSize: 16,
-    }}
-  />
+  type="text"
+  placeholder="Property Address (e.g. 123 Main St, Houston TX)"
+  value={address}
+  onChange={(e) => setAddress(e.target.value)}
+  className="w-full border rounded-lg p-2 mb-3"
+/>
 
-  <input
-    placeholder="Target buyer / audience"
-    value={audience}
-    onChange={(e) => setAudience(e.target.value)}
-    style={{
-      padding: 12,
-      borderRadius: 8,
-      border: "1px solid #ccc",
-      fontSize: 16,
-    }}
-  />
+<input
+  type="number"
+  placeholder="Purchase Price ($)"
+  value={purchasePrice}
+  onChange={(e) => setPurchasePrice(e.target.value)}
+  className="w-full border rounded-lg p-2 mb-3"
+/>
+
+<input
+  type="number"
+  placeholder="After Repair Value (ARV)"
+  value={arv}
+  onChange={(e) => setArv(e.target.value)}
+  className="w-full border rounded-lg p-2 mb-3"
+/>
+
+<input
+  type="number"
+  placeholder="Estimated Monthly Rent ($)"
+  value={rent}
+  onChange={(e) => setRent(e.target.value)}
+  className="w-full border rounded-lg p-2 mb-3"
+/>
+
+<input
+  type="number"
+  placeholder="Estimated Repair Cost ($)"
+  value={repairCost}
+  onChange={(e) => setRepairCost(e.target.value)}
+  className="w-full border rounded-lg p-2 mb-3"
+ />
 
   <select
   value={strategy}
@@ -148,7 +192,7 @@ const disabled = !topic.trim() || !audience.trim() || !strategy.trim();
 <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
   <button
   onClick={analyzeDeal}
-  disabled={!topic || !audience || !strategy || loading}
+  disabled={disabled || loading}
   style={{
     padding: "10px 16px",
     borderRadius: 8,
@@ -217,6 +261,86 @@ const disabled = !topic.trim() || !audience.trim() || !strategy.trim();
 <p style={{ marginBottom: 8 }}>
   <strong>Strategy:</strong> {result.strategy}
 </p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Risk:</strong> {result.risk}
+</p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Deal Quality:</strong> {dealLabel}
+</p>
+
+<div
+  style={{
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    background: "#f8f8f8",
+  }}
+>
+  {result.strategy === "Flip" && (
+    <>
+      <p style={{ marginBottom: 6 }}>
+        <strong>MAO:</strong> ${result.mao.toLocaleString()}
+      </p>
+
+      <p style={{ marginBottom: 6 }}>
+        <strong>Spread:</strong> ${result.spread.toLocaleString()}
+      </p>
+
+      <p style={{ marginBottom: 0 }}>
+        <strong>Margin:</strong> {result.marginPercent.toFixed(1)}%
+      </p>
+    </>
+  )}
+
+  {result.strategy === "Rental" && (
+    <>
+      <p style={{ marginBottom: 6 }}>
+        <strong>Annual Rent:</strong> $
+        {(result.rentToPricePercent > 0
+          ? Math.round((result.rentToPricePercent / 100) * Number(purchasePrice))
+          : 0
+        ).toLocaleString()}
+      </p>
+
+      <p style={{ marginBottom: 0 }}>
+        <strong>Rent-to-Price:</strong> {result.rentToPricePercent.toFixed(1)}%
+      </p>
+    </>
+  )}
+
+  {result.strategy === "Wholesale" && (
+    <>
+      <p style={{ marginBottom: 6 }}>
+        <strong>Discount to ARV:</strong> {result.discountPercent.toFixed(1)}%
+      </p>
+
+      <p style={{ marginBottom: 0 }}>
+        <strong>Spread:</strong> ${result.spread.toLocaleString()}
+      </p>
+    </>
+  )}
+</div>
+
+<div
+  style={{
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 8,
+    background: "#f8f8f8",
+  }}
+>
+  <strong style={{ display: "block", marginBottom: 8 }}>Why This Deal Scores This Way</strong>
+
+  <ul style={{ margin: 0, paddingLeft: 20 }}>
+    {(result.signals ?? []).map((signal) => (
+      <li key={signal} style={{ marginBottom: 4 }}>
+        {signal}
+      </li>
+    ))}
+  </ul>
+</div>
 
 <p style={{ marginBottom: 8 }}>
   {result.summary}
