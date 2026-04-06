@@ -1,17 +1,244 @@
 import { NextResponse } from "next/server";
 
+type StrategyType = "Flip" | "Rental" | "Wholesale";
+
+type EvaluateData = {
+  address: string;
+  purchasePrice: number;
+  afterRepairValue: number;
+  repairs: number;
+  monthlyRent?: number;
+  notes?: string;
+};
+
+type StrategyResult = {
+  strategy: StrategyType;
+  score: number;
+  risk: "Low" | "Moderate" | "High";
+  recommendation: string;
+  summary: string;
+  signals: string[];
+  insight: string;
+};
+
+function clampScore(score: number): number {
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function getRisk(score: number): "Low" | "Moderate" | "High" {
+  if (score >= 80) return "Low";
+  if (score >= 60) return "Moderate";
+  return "High";
+}
+
+function evaluateStrategy(
+  strategyType: StrategyType,
+  data: EvaluateData
+): StrategyResult | null {
+  const {
+    address,
+    purchasePrice,
+    afterRepairValue,
+    repairs,
+    monthlyRent = 0,
+    notes = "",
+  } = data;
+
+  let score = 0;
+  let signals: string[] = [];
+  let recommendation = "";
+  let summary = "";
+  let insight = "";
+
+  const spread = afterRepairValue - purchasePrice - repairs;
+  const marginPercent =
+    afterRepairValue > 0 ? (spread / afterRepairValue) * 100 : 0;
+  const mao = afterRepairValue * 0.7 - repairs;
+  const discountPercent =
+    afterRepairValue > 0
+      ? ((afterRepairValue - purchasePrice) / afterRepairValue) * 100
+      : 0;
+  const annualRent = monthlyRent * 12;
+  const rentToPricePercent =
+    purchasePrice > 0 ? (annualRent / purchasePrice) * 100 : 0;
+
+  if (strategyType === "Flip") {
+    score = 45;
+
+    if (purchasePrice <= mao) {
+      score += 15;
+      signals.push("Below MAO");
+    } else if (purchasePrice <= mao + 10000) {
+      score += 8;
+      signals.push("Near MAO");
+    } else {
+      score -= 15;
+      signals.push("Above MAO");
+    }
+
+    if (marginPercent >= 25) {
+      score += 12;
+      signals.push("Strong margin");
+    } else if (marginPercent >= 15) {
+      score += 8;
+      signals.push("Acceptable margin");
+    } else if (marginPercent > 0) {
+      score -= 5;
+      signals.push("Thin margin");
+    } else {
+      score -= 15;
+      signals.push("No real margin");
+    }
+
+    if (spread >= 40000) {
+      score += 10;
+      signals.push("Healthy spread");
+    } else if (spread >= 20000) {
+      score += 6;
+      signals.push("Usable spread");
+    } else if (spread > 0) {
+      score -= 4;
+      signals.push("Weak spread");
+    } else {
+      score -= 12;
+      signals.push("Negative spread");
+    }
+
+    recommendation =
+      purchasePrice <= mao && marginPercent >= 25
+        ? `Strong flip opportunity. Estimated spread is $${spread.toLocaleString()} with margin of ${marginPercent.toFixed(
+            1
+          )}%.`
+        : purchasePrice <= mao
+        ? `Flip setup is workable. Spread is $${spread.toLocaleString()}, but the margin is tighter at ${marginPercent.toFixed(
+            1
+          )}%.`
+        : `Flip opportunity looks weak at current pricing. Re-check purchase price, repairs, and ARV before proceeding.`;
+
+    summary = `Flip analysis for ${address}: purchase $${purchasePrice.toLocaleString()}, repairs $${repairs.toLocaleString()}, ARV $${afterRepairValue.toLocaleString()}, spread $${spread.toLocaleString()}, margin ${marginPercent.toFixed(
+      1
+    )}%.`;
+
+    if (purchasePrice > mao) {
+      insight = `If you can negotiate closer to $${Math.round(
+        mao
+      ).toLocaleString()}, this flip becomes much stronger.`;
+    }
+  }
+
+  if (strategyType === "Rental") {
+    if (!monthlyRent || monthlyRent <= 0) {
+      return null;
+    }
+
+    score = 50;
+
+    if (rentToPricePercent >= 10) {
+      score += 20;
+      signals.push("Strong rent-to-price ratio");
+      signals.push("Solid annual rent");
+      recommendation = `Rental potential looks strong. Estimated annual rent is $${annualRent.toLocaleString()}. Review cash flow, maintenance, taxes, and vacancy.`;
+    } else if (rentToPricePercent >= 7) {
+      score += 10;
+      signals.push("Moderate rent-to-price ratio");
+      signals.push("Rent may work but needs expense review");
+      recommendation = `Rental potential looks moderate. Estimated annual rent is $${annualRent.toLocaleString()}. Review expenses carefully.`;
+    } else {
+      score -= 10;
+      signals.push("Weak rent-to-price ratio");
+      signals.push("Rental performance may be too thin");
+      recommendation =
+        "Rental performance looks weak based on rent-to-price ratio. Re-evaluate rent assumptions or purchase price.";
+      insight =
+        "This rental likely needs either a lower purchase price or stronger monthly rent to become more attractive.";
+    }
+
+    if (repairs > 30000) {
+      score -= 6;
+      signals.push("Repairs may delay cash flow");
+    }
+
+    summary = `Rental analysis for ${address}: purchase $${purchasePrice.toLocaleString()}, estimated rent $${monthlyRent.toLocaleString()}/mo, repairs $${repairs.toLocaleString()}, rent-to-price ${rentToPricePercent.toFixed(
+      1
+    )}%.`;
+  }
+
+  if (strategyType === "Wholesale") {
+    score = 50;
+
+    if (discountPercent >= 30) {
+      score += 15;
+      signals.push("Strong discount to ARV");
+      signals.push("Better wholesale margin");
+    } else if (discountPercent >= 20) {
+      score += 8;
+      signals.push("Usable discount to ARV");
+      signals.push("Wholesale may work with right buyers");
+    } else {
+      score -= 8;
+      signals.push("Thin discount to ARV");
+      signals.push("Assignment spread may be weak");
+    }
+
+    if (spread < 10000) {
+      score -= 8;
+      signals.push("Low assignment spread");
+    } else if (spread >= 15000) {
+      score += 5;
+      signals.push("Clear wholesale deal structure");
+    }
+
+    if (repairs > 50000) {
+      score += 3;
+      signals.push("Heavy rehab may reduce buyer demand");
+    }
+
+    if (notes.toLowerCase().includes("assignment")) {
+      score += 2;
+      signals.push("Assignment opportunity detected");
+    }
+
+    if (notes.toLowerCase().includes("cash buyer")) {
+      score += 2;
+      signals.push("Cash buyer angle noted");
+    }
+
+    recommendation =
+      discountPercent >= 20
+        ? `Wholesale setup looks workable. The discount to ARV is roughly ${discountPercent.toFixed(
+            1
+          )}%. Confirm investor demand, assignment spread, and repair expectations.`
+        : "Wholesale opportunity may be thin at current pricing. Re-check discount, buyer demand, and expected assignment margin.";
+
+    summary = `Wholesale analysis for ${address}: purchase $${purchasePrice.toLocaleString()}, ARV $${afterRepairValue.toLocaleString()}, repairs $${repairs.toLocaleString()}, discount ${discountPercent.toFixed(
+      1
+    )}%, spread $${spread.toLocaleString()}.`;
+
+    if (discountPercent < 20) {
+      const targetPrice = Math.round(afterRepairValue * 0.8);
+      insight = `If you can negotiate closer to $${targetPrice.toLocaleString()}, this wholesale deal becomes more workable.`;
+    }
+  }
+
+  score = clampScore(score);
+
+  return {
+    strategy: strategyType,
+    score,
+    risk: getRisk(score),
+    recommendation,
+    summary,
+    signals,
+    insight,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      address,
-      purchasePrice,
-      arv,
-      rent,
-      repairCost,
-      notes,
-      strategy,
-    } = body;
+
+    const { address, purchasePrice, arv, rent, repairCost, notes, strategy } =
+      body;
 
     if (!address || !purchasePrice || !arv || !strategy) {
       return NextResponse.json(
@@ -32,143 +259,66 @@ export async function POST(request: Request) {
       );
     }
 
-    // Core deal metrics
-    const closingCosts = afterRepairValue * 0.05;
-const holdingCosts = afterRepairValue * 0.05;
-
-const mao =
-  afterRepairValue * 0.7 -
-  repairs -
-  closingCosts -
-  holdingCosts;
-    const totalBasis = purchase + repairs;
-    const spread = afterRepairValue - totalBasis;
+    const mao = afterRepairValue * 0.7 - repairs;
+    const spread = afterRepairValue - purchase - repairs;
     const marginPercent =
       afterRepairValue > 0 ? (spread / afterRepairValue) * 100 : 0;
     const rentToPricePercent =
       purchase > 0 ? ((monthlyRent * 12) / purchase) * 100 : 0;
-      const discountPercent =
-        afterRepairValue > 0
-          ? ((afterRepairValue - purchase) / afterRepairValue) * 100
-          : 0;
+    const discountPercent =
+      afterRepairValue > 0
+        ? ((afterRepairValue - purchase) / afterRepairValue) * 100
+        : 0;
 
-    let score = 60;
-    let recommendation = "Proceed carefully and validate the numbers.";
-    let summary = `${strategy} analysis for ${address}: purchase $${purchase.toLocaleString()}, ARV $${afterRepairValue.toLocaleString()}, repairs $${repairs.toLocaleString()}.`;
-    let signals: string[] = [];
+    const baseData: EvaluateData = {
+      address,
+      purchasePrice: purchase,
+      afterRepairValue,
+      repairs,
+      monthlyRent,
+      notes,
+    };
 
-    if (strategy === "Flip") {
-      if (purchase <= mao && marginPercent >= 25) {
-        score += 25;
-        signals.push("Below MAO");
-signals.push("Strong margin");
-signals.push("Healthy spread");
-        recommendation = `Flip opportunity looks promising. Estimated spread is $${spread.toLocaleString()}. Focus on rehab control, resale comps, and holding costs.`;
-      } else if (purchase <= mao) {
-        score += 10;
-        signals.push("Near MAO");
-signals.push("Spread exists but margin is tighter");
-        recommendation = `Deal is near MAO. Spread is $${spread.toLocaleString()}, but margins are tighter. Proceed carefully.`;
-      } else {
-        score -= 15;
-        signals.push("Exceeds MAO");
-signals.push("Thin margin");
-signals.push("Weak flip setup");
-        recommendation = `Deal exceeds MAO. Flip opportunity looks weak. Re-check ARV, repair costs, and purchase price before proceeding.`;
-      }
+    const flipEval = evaluateStrategy("Flip", baseData);
+    const rentalEval = evaluateStrategy("Rental", baseData);
+    const wholesaleEval = evaluateStrategy("Wholesale", baseData);
 
-      summary = `Flip analysis for ${address}: purchase $${purchase.toLocaleString()}, repairs $${repairs.toLocaleString()}, ARV $${afterRepairValue.toLocaleString()}.`;
-    } else if (strategy === "Rental") {
-      const annualRent = monthlyRent * 12;
+    const allStrategies = [flipEval, rentalEval, wholesaleEval].filter(
+      (item): item is StrategyResult => item !== null
+    );
 
-      if (rentToPricePercent >= 10) {
-        score += 20;
-        signals.push("Strong rent-to-price ratio");
-signals.push("Solid annual rent");
-        recommendation = `Rental potential looks strong. Estimated annual rent is $${annualRent.toLocaleString()}. Review cash flow, maintenance, taxes, and vacancy risk.`;
-      } else if (rentToPricePercent >= 7) {
-        score += 10;
-        signals.push("Moderate rent-to-price ratio");
-signals.push("Rent may work but needs expense review");
-        recommendation = `Rental potential looks moderate. Estimated annual rent is $${annualRent.toLocaleString()}. Review expenses carefully.`;
-      } else {
-        score -= 10;
-        signals.push("Weak rent-to-price ratio");
-signals.push("Rental performance may be too thin");
-        recommendation = `Rental performance looks weak based on rent-to-price ratio. Re-evaluate rent assumptions or purchase price.`;
-      }
+    const sortedStrategies = [...allStrategies].sort((a, b) => b.score - a.score);
 
-      summary = `Rental analysis for ${address}: purchase $${purchase.toLocaleString()}, estimated rent $${monthlyRent.toLocaleString()}/mo, repairs $${repairs.toLocaleString()}.`;
-    } else if (strategy === "Wholesale") {
-      score = 65;
+const bestStrategy = sortedStrategies[0] ?? null;
+const runnerUp = sortedStrategies[1] ?? null;
 
-      if (discountPercent >= 30) {
-  score += 15;
-  signals.push("Strong discount to ARV");
-  signals.push("Better wholesale margin");
-} else if (discountPercent >= 20) {
-  score += 8;
-  signals.push("Usable discount to ARV");
-  signals.push("Wholesale may work with right buyers");
-} else {
-  score -= 8;
-  signals.push("Thin discount to ARV");
-  signals.push("Assignment spread may be weak");
-}
-if (spread < 10000) {
-  signals.push("Low assignment spread");
-}
-      if (repairs > 50000) {
-  score += 3;
-  signals.push("Heavy rehab may reduce buyer demand");
-}
-
-if (notes && notes.toLowerCase().includes("assignment")) {
-  score += 2;
-  signals.push("Assignment opportunity detected");
-}
-
-if (notes && notes.toLowerCase().includes("cash buyer")) {
-  score += 2;
-  signals.push("Cash buyer angle noted");
-}
-
-if (discountPercent >= 20 && spread >= 15000) {
-  signals.push("Clear wholesale deal structure");
-}
-
-      recommendation =
-        discountPercent >= 20
-          ? `Wholesale setup looks workable. The discount to ARV is roughly ${discountPercent.toFixed(
-              1
-            )}%. Confirm investor demand, assignment spread, and repair expectations.`
-          : `Wholesale opportunity may be thin at current pricing. Re-check discount, buyer demand, and expected assignment margin.`;
-
-      summary = `Wholesale analysis for ${address}: purchase $${purchase.toLocaleString()}, ARV $${afterRepairValue.toLocaleString()}, repairs $${repairs.toLocaleString()}.`;
+    if (!bestStrategy) {
+      return NextResponse.json(
+        { error: "Could not evaluate any strategy for this deal." },
+        { status: 400 }
+      );
     }
 
-    score = Math.max(0, Math.min(100, Math.round(score)));
-    let risk = "Moderate";
-
-if (score >= 80) risk = "Low";
-else if (score >= 60) risk = "Moderate";
-else risk = "High";
-
     return NextResponse.json({
-      score,
-      risk,
-      strategy,
-      recommendation,
-      summary,
-      signals,
+      score: bestStrategy.score,
+      risk: bestStrategy.risk,
+      strategy: bestStrategy.strategy,
+      recommendation: bestStrategy.recommendation,
+      summary: bestStrategy.summary,
+      signals: bestStrategy.signals,
+      insight: bestStrategy.insight,
       mao,
       spread,
       marginPercent,
       rentToPricePercent,
       discountPercent,
+      bestStrategy,
+      allStrategies: sortedStrategies,
+      selectedStrategy: strategy,
+      runnerUp,
     });
   } catch (error) {
-    console.error("Analyze route failed:", error);
+    console.error("🚨 ANALYZE ROUTE ERROR:", error);
 
     return NextResponse.json(
       { error: "Server failed to analyze the deal." },

@@ -3,6 +3,8 @@ import { useState } from "react";
 export default function Home() {
 const [address, setAddress] = useState("");
 const [purchasePrice, setPurchasePrice] = useState("");
+const [originalPrice, setOriginalPrice] = useState("");
+const [targetPrice, setTargetPrice] = useState("");
 const [arv, setArv] = useState("");
 const [rent, setRent] = useState("");
 const [repairCost, setRepairCost] = useState("");
@@ -15,30 +17,68 @@ const [result, setResult] = useState<{
   recommendation: string;
   summary: string;
   signals: string[];
+  insight: string;
   mao: number;
 spread: number;
 marginPercent: number;
 rentToPricePercent: number;
 discountPercent: number;
+bestStrategy: {
+  strategy: string;
+  score: number;
+} | null;
+runnerUp: {
+  strategy: string;
+  score: number;
+} | null;
+allStrategies: {
+  strategy: string;
+  score: number;
+}[];
 } | null>(null);
+
+const [baselineResult, setBaselineResult] = useState<{
+  score: number;
+  risk: string;
+  strategy: string;
+  recommendation: string;
+  summary: string;
+  signals: string[];
+  insight: string;
+  mao: number;
+  spread: number;
+  marginPercent: number;
+  rentToPricePercent: number;
+  discountPercent: number;
+  runnerUp: {
+  strategy: string;
+  score: number;
+} | null;
+} | null>(null);
+
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
 
 function clearForm() {
 setAddress("");
 setPurchasePrice("");
+setTargetPrice("");
 setArv("");
 setRent("");
 setRepairCost("");
 setNotes("");
 setStrategy("");
 setResult(null);
+setBaselineResult(null);
 setError("");
 setLoading(false);
 }
 
 async function analyzeDeal() {
   setLoading(true);
+  if (!originalPrice) {
+  setOriginalPrice(purchasePrice);
+}
   setError("");
   setResult(null);
 
@@ -50,7 +90,7 @@ async function analyzeDeal() {
       },
       body: JSON.stringify({
   address,
-  purchasePrice,
+  purchasePrice: targetPrice || purchasePrice,
   arv,
   rent,
   repairCost,
@@ -65,7 +105,11 @@ async function analyzeDeal() {
       throw new Error(data.error || "Something went wrong.");
     }
 
-    setResult(data);
+    if (!targetPrice && !baselineResult) {
+  setBaselineResult(data);
+}
+
+setResult(data);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Unexpected error occurred.";
@@ -82,14 +126,128 @@ const disabled =
   !strategy.trim();
 
   let dealLabel = "";
+let winnerExplanation = "";
+let insight = "";
+
+let dealToneBg = "#f3f4f6";
+let dealToneBorder = "#d1d5db";
+let dealToneText = "#111827";
 
 if (result) {
   if (result.score >= 80) dealLabel = "Strong Deal";
   else if (result.score >= 60) dealLabel = "Borderline";
   else dealLabel = "Avoid";
+
+  if (result.score >= 80) {
+    dealToneBg = "#ecfdf5";
+    dealToneBorder = "#86efac";
+    dealToneText = "#166534";
+  } else if (result.score >= 60) {
+    dealToneBg = "#fffbeb";
+    dealToneBorder = "#fcd34d";
+    dealToneText = "#92400e";
+  } else {
+    dealToneBg = "#fef2f2";
+    dealToneBorder = "#fca5a5";
+    dealToneText = "#991b1b";
+  }
+
+  if (result.bestStrategy) {
+    const winner = result.bestStrategy.strategy;
+    const score = result.bestStrategy.score;
+    const runnerUp = result.runnerUp;
+
+    let dealStrength = "";
+
+    if (result.score >= 75) {
+      dealStrength = "This is a strong deal.";
+    } else if (result.score >= 60) {
+      dealStrength = "This is a moderate deal with some risk.";
+    } else {
+      dealStrength = "This deal is weak overall.";
+    }
+
+    if (runnerUp) {
+      if (score >= 80) {
+        winnerExplanation = `${winner} clearly outperformed ${runnerUp.strategy}. ${dealStrength}`;
+      } else if (score >= 65) {
+        winnerExplanation = `${winner} edges out ${runnerUp.strategy}, but the deal is still somewhat tight.`;
+      } else {
+        winnerExplanation = `${winner} ranks highest, but all strategies show weakness in this deal.`;
+      }
+    }
+  }
 }
 
-  return (
+let improvementMessage = "";
+
+if (targetPrice && Number(targetPrice) < Number(originalPrice)) {
+  const diff = Number(originalPrice) - Number(targetPrice);
+
+  if (diff > 0) {
+    improvementMessage = `You reduced price by $${diff.toLocaleString()} — deal is improving.`;
+  }
+}
+
+const showComparison =
+  !!baselineResult &&
+  !!result &&
+  !!originalPrice &&
+  !!targetPrice &&
+  Number(targetPrice) !== Number(originalPrice);
+
+const scoreChange =
+  showComparison ? result.score - baselineResult.score : 0;
+
+const spreadChange =
+  showComparison ? result.spread - baselineResult.spread : 0;
+
+const marginChange =
+  showComparison ? result.marginPercent - baselineResult.marginPercent : 0;
+
+let strategyRecommendation = "";
+let strategyReason = "";
+
+if (result?.bestStrategy) {
+  const winner = result.bestStrategy.strategy;
+  const score = result.bestStrategy.score;
+
+  if (winner === "Flip") {
+    if (score >= 80) {
+      strategyRecommendation = "Strong flip opportunity. Numbers support execution.";
+    } else if (score >= 65) {
+      strategyRecommendation =
+        "Flip is the best strategy, but the deal is borderline. Try negotiating a better purchase price.";
+    } else {
+      strategyRecommendation =
+        "Even though flip ranks highest, this deal is weak overall. Proceed with caution.";
+    }
+  } else if (winner === "Rental") {
+    if (score >= 75) {
+      strategyRecommendation =
+        "Strong rental opportunity with solid income potential.";
+    } else if (score >= 60) {
+      strategyRecommendation =
+        "Rental works, but returns are tight. Review expenses carefully.";
+    } else {
+      strategyRecommendation =
+        "Rental is not attractive at this price.";
+    }
+  } else if (winner === "Wholesale") {
+    if (score >= 75) {
+      strategyRecommendation =
+        "Strong wholesale deal with a solid assignment margin.";
+    } else if (score >= 60) {
+      strategyRecommendation =
+        "Wholesale is possible, but buyer demand may be limited.";
+    } else {
+      strategyRecommendation =
+        "Wholesale spread is too weak to rely on.";
+    }
+  }
+}
+
+return (
     <main
       style={{
         maxWidth: 960,
@@ -134,6 +292,18 @@ if (result) {
   onChange={(e) => setPurchasePrice(e.target.value)}
   className="w-full border rounded-lg p-2 mb-3"
 />
+
+<input
+  type="number"
+  placeholder="Try Different Purchase Price (optional)"
+  value={targetPrice}
+  onChange={(e) => setTargetPrice(e.target.value)}
+  className="w-full border rounded-lg p-2 mb-3"
+/>
+
+<p style={{ fontSize: 12, color: "#666", marginTop: -8, marginBottom: 12 }}>
+  Tip: Try lowering the price to see how the deal improves.
+</p>
 
 <input
   type="number"
@@ -258,6 +428,40 @@ if (result) {
   <span>Score: {result.score}</span>
 </div>
 
+{result.bestStrategy && (
+  <div
+    style={{
+  marginBottom: 16,
+  padding: 14,
+  borderRadius: 8,
+  background: dealToneBg,
+  border: `1px solid ${dealToneBorder}`,
+  color: dealToneText,
+}}
+  >
+    <strong>Best Strategy: {result.bestStrategy.strategy}</strong>
+    <p style={{ margin: "6px 0 0 0" }}>
+      Score: {result.bestStrategy.score}
+    </p>
+  </div>
+)}
+
+{winnerExplanation && (
+  <div
+    style={{
+      marginTop: 16,
+      padding: 12,
+      borderRadius: 10,
+      background: "#f8fafc",
+      border: "1px solid #e5e7eb",
+      fontSize: 15,
+      lineHeight: 1.5,
+    }}
+  >
+    <strong>Why this strategy won:</strong> {winnerExplanation}
+  </div>
+)}
+
 <p style={{ marginBottom: 8 }}>
   <strong>Strategy:</strong> {result.strategy}
 </p>
@@ -267,8 +471,52 @@ if (result) {
 </p>
 
 <p style={{ marginBottom: 8 }}>
-  <strong>Deal Quality:</strong> {dealLabel}
+  <strong>Deal Quality:</strong>{" "}
+  <span
+    style={{
+      color: dealToneText,
+      fontWeight: 600,
+    }}
+  >
+    {dealLabel}
+  </span>
 </p>
+
+{showComparison && baselineResult && (
+  <div
+    style={{
+      marginBottom: 16,
+      padding: 12,
+      borderRadius: 8,
+      background: "#f6f8fb",
+      border: "1px solid #d9e2f0",
+    }}
+  >
+    <strong style={{ display: "block", marginBottom: 8 }}>
+      Before vs After
+    </strong>
+
+    <p style={{ marginBottom: 6 }}>
+      <strong>Purchase Price:</strong> ${Number(originalPrice).toLocaleString()} → ${Number(targetPrice).toLocaleString()}
+    </p>
+
+    <p style={{ marginBottom: 6 }}>
+      <strong>Score:</strong> {baselineResult.score} → {result.score}
+    </p>
+
+    <p style={{ marginBottom: 6 }}>
+      <strong>Spread:</strong> ${baselineResult.spread.toLocaleString()} → ${result.spread.toLocaleString()}
+    </p>
+
+    <p style={{ marginBottom: 6 }}>
+      <strong>Margin:</strong> {baselineResult.marginPercent.toFixed(1)}% → {result.marginPercent.toFixed(1)}%
+    </p>
+
+    <p style={{ marginBottom: 0 }}>
+      <strong>Risk:</strong> {baselineResult.risk} → {result.risk}
+    </p>
+  </div>
+)}
 
 <div
   style={{
@@ -342,6 +590,35 @@ if (result) {
   </ul>
 </div>
 
+{improvementMessage && (
+  <div style={{
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 6,
+    background: "#e6f4ea",
+    border: "1px solid #b7e1cd"
+  }}>
+    <strong>Scenario Insight</strong>
+    <p style={{ marginTop: 4 }}>{improvementMessage}</p>
+  </div>
+)}
+
+{result.insight && (
+  <div
+    style={{
+      marginBottom: 12,
+      padding: 12,
+      borderRadius: 8,
+      background: "#eef6ff",
+    }}
+  >
+    <strong style={{ display: "block", marginBottom: 6 }}>
+      Insight
+    </strong>
+    <span>{result.insight}</span>
+  </div>
+)}
+
 <p style={{ marginBottom: 8 }}>
   {result.summary}
 </p>
@@ -356,7 +633,7 @@ if (result) {
   <strong style={{ display: "block", marginBottom: 6 }}>
     Recommendation:
   </strong>
-  {result.recommendation}
+  {strategyRecommendation}
 </div>   
     </>
   )}
