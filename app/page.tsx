@@ -128,6 +128,7 @@ const disabled =
   let dealLabel = "";
 let winnerExplanation = "";
 let insight = "";
+let confidenceLabel = "";
 
 let dealToneBg = "#f3f4f6";
 let dealToneBorder = "#d1d5db";
@@ -137,6 +138,19 @@ if (result) {
   if (result.score >= 80) dealLabel = "Strong Deal";
   else if (result.score >= 60) dealLabel = "Borderline";
   else dealLabel = "Avoid";
+
+    const scoreGap =
+    result.runnerUp && result.bestStrategy
+      ? result.bestStrategy.score - result.runnerUp.score
+      : 0;
+
+  if (result.score >= 80 && scoreGap >= 10) {
+  confidenceLabel = "High";
+} else if (result.score >= 60 && scoreGap >= 3) {
+  confidenceLabel = "Medium";
+} else {
+  confidenceLabel = "Low";
+}
 
   if (result.score >= 80) {
     dealToneBg = "#ecfdf5";
@@ -475,6 +489,10 @@ return (
 
 <p style={{ marginBottom: 8 }}>
   <strong>Strategy:</strong> {result.strategy}
+</p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Confidence:</strong> {confidenceLabel}
 </p>
 
 <p style={{ marginBottom: 8 }}>
