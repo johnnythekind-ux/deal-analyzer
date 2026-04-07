@@ -213,38 +213,49 @@ if (result?.bestStrategy) {
   const score = result.bestStrategy.score;
 
   if (winner === "Flip") {
-    if (score >= 80) {
-      strategyRecommendation = "Strong flip opportunity. Numbers support execution.";
-    } else if (score >= 65) {
-      strategyRecommendation =
-        "Flip is the best strategy, but the deal is borderline. Try negotiating a better purchase price.";
-    } else {
-      strategyRecommendation =
-        "Even though flip ranks highest, this deal is weak overall. Proceed with caution.";
-    }
-  } else if (winner === "Rental") {
-    if (score >= 75) {
-      strategyRecommendation =
-        "Strong rental opportunity with solid income potential.";
-    } else if (score >= 60) {
-      strategyRecommendation =
-        "Rental works, but returns are tight. Review expenses carefully.";
-    } else {
-      strategyRecommendation =
-        "Rental is not attractive at this price.";
-    }
-  } else if (winner === "Wholesale") {
-    if (score >= 75) {
-      strategyRecommendation =
-        "Strong wholesale deal with a solid assignment margin.";
-    } else if (score >= 60) {
-      strategyRecommendation =
-        "Wholesale is possible, but buyer demand may be limited.";
-    } else {
-      strategyRecommendation =
-        "Wholesale spread is too weak to rely on.";
-    }
+  if (score >= 80) {
+    strategyRecommendation =
+      result.mao >= Number(purchasePrice)
+        ? "Strong flip opportunity because the deal is below MAO and margin is healthy."
+        : "Strong flip opportunity with healthy spread and margin.";
+  } else if (score >= 65) {
+    strategyRecommendation =
+      "Flip is the best strategy, but the deal is borderline because pricing is still tight.";
+  } else {
+    strategyRecommendation =
+      "Even though flip ranks highest, the deal is weak overall because margin and spread are not strong enough.";
   }
+}
+
+else if (winner === "Rental") {
+  if (score >= 75) {
+    strategyRecommendation =
+      result.rentToPricePercent >= 15
+        ? "Strong rental opportunity because rent-to-price is attractive and income potential is solid."
+        : "Rental is strongest here, with decent income potential.";
+  } else if (score >= 60) {
+    strategyRecommendation =
+      "Rental works, but returns are tight because rent-to-price is only moderate and expenses need review.";
+  } else {
+    strategyRecommendation =
+      "Rental is not attractive at this price because income is too soft relative to cost.";
+  }
+}
+
+else if (winner === "Wholesale") {
+  if (score >= 75) {
+    strategyRecommendation =
+      result.spread >= 40000
+        ? "Strong wholesale setup because the spread looks assignable and near-term execution is possible."
+        : "Wholesale looks strongest, with workable assignment potential.";
+  } else if (score >= 60) {
+    strategyRecommendation =
+      "Wholesale is possible, but buyer demand and spread still need validation.";
+  } else {
+    strategyRecommendation =
+      "Wholesale spread is too weak to rely on, even if it ranks highest among the available options.";
+  }
+}
 }
 
 return (
