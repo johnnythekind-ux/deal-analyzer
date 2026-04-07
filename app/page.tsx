@@ -129,6 +129,10 @@ const disabled =
 let winnerExplanation = "";
 let insight = "";
 let confidenceLabel = "";
+let confidenceExplanation = "";
+let confidenceDrivers: string[] = [];
+let decision = "";
+let decisionReason = "";
 
 let dealToneBg = "#f3f4f6";
 let dealToneBorder = "#d1d5db";
@@ -140,16 +144,46 @@ if (result) {
   else dealLabel = "Avoid";
 
     const scoreGap =
-    result.runnerUp && result.bestStrategy
-      ? result.bestStrategy.score - result.runnerUp.score
-      : 0;
+  result.runnerUp && result.bestStrategy
+    ? result.bestStrategy.score - result.runnerUp.score
+    : 0;
 
-  if (result.score >= 80 && scoreGap >= 10) {
+if (result.score >= 80 && scoreGap >= 10) {
   confidenceLabel = "High";
+  confidenceExplanation =
+    "The winning strategy has both a strong overall score and a clear lead over the runner-up.";
 } else if (result.score >= 60 && scoreGap >= 3) {
   confidenceLabel = "Medium";
+  confidenceExplanation =
+    "The winning strategy has a modest lead, but the deal still shows some tighter or mixed signals.";
 } else {
   confidenceLabel = "Low";
+  confidenceExplanation =
+    "The winning strategy is only narrowly ahead or the overall deal strength is weak.";
+}
+
+if (scoreGap < 6) {
+  confidenceDrivers.push("Strategies are nearly tied.");
+} else if (scoreGap < 10) {
+  confidenceDrivers.push("Score gap between strategies is small.");
+}
+
+if (result.marginPercent < 25) {
+  confidenceDrivers.push("Margin is thin.");
+} else if (result.marginPercent <= 35) {
+  confidenceDrivers.push("Margin is moderate.");
+}
+
+if (result.mao && Number(purchasePrice) >= result.mao * 0.95) {
+  confidenceDrivers.push("Purchase price is close to MAO.");
+}
+
+if (result.strategy === "Rental" && result.rentToPricePercent < 10) {
+  confidenceDrivers.push("Rent-to-price ratio is not especially strong.");
+}
+
+if (confidenceDrivers.length === 0) {
+  confidenceDrivers.push("The winning strategy shows strong separation from the alternatives.");
 }
 
   if (result.score >= 80) {
@@ -166,12 +200,12 @@ if (result) {
     dealToneText = "#991b1b";
   }
 
+  let dealStrength = "";
+
   if (result.bestStrategy) {
     const winner = result.bestStrategy.strategy;
     const score = result.bestStrategy.score;
     const runnerUp = result.runnerUp;
-
-    let dealStrength = "";
 
     if (result.score >= 75) {
       dealStrength = "This is a strong deal.";
@@ -180,6 +214,22 @@ if (result) {
     } else {
       dealStrength = "This deal is weak overall.";
     }
+
+if (result.score >= 80 && confidenceLabel === "High") {
+  decision = "BUY";
+} else if (result.score >= 65) {
+  decision = "NEGOTIATE";
+} else {
+  decision = "PASS";
+}
+
+if (decision === "BUY") {
+  decisionReason = "Strong metrics and clear strategic advantage.";
+} else if (decision === "NEGOTIATE") {
+  decisionReason = "Deal has potential, but needs better entry price or improved terms.";
+} else {
+  decisionReason = "Risk outweighs reward based on current numbers.";
+}
 
     if (runnerUp) {
       if (score >= 80) {
@@ -494,6 +544,36 @@ return (
 <p style={{ marginBottom: 8 }}>
   <strong>Confidence:</strong> {confidenceLabel}
 </p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Decision:</strong>{" "}
+  <span
+    style={{
+      color:
+        decision === "BUY"
+          ? "#166534"
+          : decision === "NEGOTIATE"
+          ? "#92400e"
+          : "#991b1b",
+      fontWeight: 600,
+    }}
+  >
+    {decision}
+  </span>
+</p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Confidence Reason:</strong> {confidenceExplanation}
+</p>
+
+<div style={{ marginBottom: 8 }}>
+  <strong>Confidence Drivers:</strong>
+  <ul style={{ marginTop: 6, marginBottom: 0, paddingLeft: 20 }}>
+    {confidenceDrivers.map((driver, index) => (
+      <li key={index}>{driver}</li>
+    ))}
+  </ul>
+</div>
 
 <p style={{ marginBottom: 8 }}>
   <strong>Risk:</strong> {result.risk}
