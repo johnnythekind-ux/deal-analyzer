@@ -162,6 +162,20 @@ if (result.score >= 80 && scoreGap >= 10) {
     "The winning strategy is only narrowly ahead or the overall deal strength is weak.";
 }
 
+// DECISION ENGINE
+if (result.score >= 80 && confidenceLabel === "High") {
+  decision = "BUY";
+} else if (result.score >= 65) {
+  decision = "NEGOTIATE";
+} else {
+  decision = "PASS";
+}
+
+// FORCE LOW CONFIDENCE IF PASS
+if (decision === "PASS") {
+  confidenceLabel = "Low";
+}
+
 if (scoreGap < 6) {
   confidenceDrivers.push("Strategies are nearly tied.");
 } else if (scoreGap < 10) {
@@ -560,6 +574,10 @@ return (
   >
     {decision}
   </span>
+</p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Decision Reason:</strong> {decisionReason}
 </p>
 
 <p style={{ marginBottom: 8 }}>
