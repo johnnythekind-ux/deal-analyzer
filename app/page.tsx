@@ -134,6 +134,10 @@ let confidenceDrivers: string[] = [];
 let decision = "";
 let decisionReason = "";
 
+let targetPriceText = "";
+let priceGapText = "";
+let negotiationGuidance = "";
+
 let dealToneBg = "#f3f4f6";
 let dealToneBorder = "#d1d5db";
 let dealToneText = "#111827";
@@ -243,6 +247,52 @@ if (decision === "BUY") {
   decisionReason = "Deal has potential, but needs better entry price or improved terms.";
 } else {
   decisionReason = "Risk outweighs reward based on current numbers.";
+}
+
+// TARGET PRICE ENGINE
+
+const purchase = Number(purchasePrice);
+const mao = result?.mao ? Number(result.mao) : null;
+const rentNumber = rent ? Number(rent) : null;
+
+if (strategy === "Flip" && mao && purchase) {
+  const gap = mao - purchase;
+
+  targetPriceText = `$${mao.toLocaleString()}`;
+
+  if (gap > 0) {
+    priceGapText = `$${gap.toLocaleString()} below target`;
+    negotiationGuidance =
+      "This deal is priced below your target threshold. You may have room to move quickly and preserve margin.";
+  } else if (gap < 0) {
+    priceGapText = `$${Math.abs(gap).toLocaleString()} above target`;
+    negotiationGuidance =
+      "This deal is above your target threshold. Negotiate the purchase price down or improve terms before moving forward.";
+  } else {
+    priceGapText = `Exactly at target`;
+    negotiationGuidance =
+      "This deal is right at your target threshold. Proceed carefully and confirm your assumptions before committing.";
+  }
+} else if (strategy === "Rental" && rentNumber && purchase) {
+  const annualRent = rentNumber * 12;
+  const rentalTarget = annualRent / 0.1;
+  const gap = rentalTarget - purchase;
+
+  targetPriceText = `$${Math.round(rentalTarget).toLocaleString()}`;
+
+  if (gap > 0) {
+    priceGapText = `$${Math.round(gap).toLocaleString()} below target`;
+    negotiationGuidance =
+      "This rental appears to be priced below the rent-based target. The cash-flow setup may be favorable if expenses and condition hold up.";
+  } else if (gap < 0) {
+    priceGapText = `$${Math.round(Math.abs(gap)).toLocaleString()} above target`;
+    negotiationGuidance =
+      "This rental appears to be priced above the rent-based target. Consider negotiating harder or reassessing projected cash flow.";
+  } else {
+    priceGapText = `Exactly at target`;
+    negotiationGuidance =
+      "This rental is landing right on the rent-based target. Review taxes, insurance, repairs, and vacancy assumptions before proceeding.";
+  }
 }
 
     if (runnerUp) {
@@ -578,6 +628,18 @@ return (
 
 <p style={{ marginBottom: 8 }}>
   <strong>Decision Reason:</strong> {decisionReason}
+</p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Target Price:</strong> {targetPriceText}
+</p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Price Gap:</strong> {priceGapText}
+</p>
+
+<p style={{ marginBottom: 8 }}>
+  <strong>Negotiation Guidance:</strong> {negotiationGuidance}
 </p>
 
 <p style={{ marginBottom: 8 }}>
