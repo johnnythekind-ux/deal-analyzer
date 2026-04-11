@@ -59,6 +59,26 @@ const [baselineResult, setBaselineResult] = useState<{
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
 
+const needsArv = strategy === "Flip" || strategy === "Wholesale";
+const needsRent = strategy === "Rental";
+
+const missingRequiredFieldMessage =
+  !address.trim()
+    ? "Enter property address."
+    : !purchasePrice
+    ? "Enter purchase price."
+    : !repairCost
+    ? "Enter repair cost."
+    : !strategy
+    ? "Select a deal strategy."
+    : needsArv && !arv
+    ? `Enter ARV to analyze a ${strategy} deal.`
+    : needsRent && !rent
+    ? "Enter monthly rent to analyze a Rental deal."
+    : "";
+
+const disabled = !!missingRequiredFieldMessage || loading;
+
 function clearForm() {
 setAddress("");
 setPurchasePrice("");
@@ -118,12 +138,6 @@ setResult(data);
     setLoading(false);
   }
 }
-
-const disabled =
-  !address.trim() ||
-  !purchasePrice.trim() ||
-  !arv.trim() ||
-  !strategy.trim();
 
   let dealLabel = "";
 let winnerExplanation = "";
@@ -527,6 +541,16 @@ return (
   <option value="Wholesale">Wholesale</option>
 </select>
 
+{strategy && (
+  <p style={{ fontSize: 12, color: "#666", marginTop: 6, marginBottom: 12 }}>
+    {strategy === "Flip"
+      ? "Flip uses purchase price, repair cost, and ARV."
+      : strategy === "Rental"
+      ? "Rental uses purchase price, repair cost, and monthly rent."
+      : "Wholesale uses purchase price, repair cost, and ARV."}
+  </p>
+)}
+
   <label style={{ fontSize: 14, marginBottom: 4 }}>
   Notes / Situation
 </label>
@@ -544,10 +568,16 @@ return (
 />
 </div>
 
+{missingRequiredFieldMessage && (
+  <p style={{ fontSize: 13, color: "#92400e", marginTop: 8, marginBottom: 12 }}>
+    {missingRequiredFieldMessage}
+  </p>
+)}
+
 <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
   <button
   onClick={analyzeDeal}
-  disabled={disabled || loading}
+  disabled={disabled}
   style={{
     padding: "10px 16px",
     borderRadius: 8,
@@ -578,27 +608,23 @@ return (
   </button>
 </div>
 
-        <div
-  style={{
-    marginTop: 24,
-    padding: 20,
-    borderRadius: 12,
-    background: "#f8f8f8",
-    border: "1px dashed #ccc",
-  }}
->
+  <div className="mt-6 rounded-xl border border-dashed border-gray-200 bg-white p-5">
   {error && (
   <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
     {error}
   </div>
 )}
   {!result ? (
-    <>
-      <strong>Empty State:</strong>
-      <p style={{ marginBottom: 0 }}>
-        Enter deal details to generate an initial analysis.
-      </p>
-    </>
+
+      <div className="space-y-1">
+  <p className="text-sm font-semibold text-gray-900">
+    Start your analysis
+  </p>
+  <p className="text-sm text-gray-600">
+    Fill out the deal details above and click “Analyze Deal” to see insights, strategy recommendations, and pricing guidance.
+  </p>
+</div>
+  
   ) : (
     <>
    <div

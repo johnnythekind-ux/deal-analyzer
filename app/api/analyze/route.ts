@@ -240,24 +240,55 @@ export async function POST(request: Request) {
     const { address, purchasePrice, arv, rent, repairCost, notes, strategy } =
       body;
 
-    if (!address || !purchasePrice || !arv || !strategy) {
-      return NextResponse.json(
-        { error: "Address, purchase price, ARV, and strategy are required." },
-        { status: 400 }
-      );
-    }
+    const needsArv = strategy === "Flip" || strategy === "Wholesale";
+const needsRent = strategy === "Rental";
+
+if (!address || !purchasePrice || !repairCost || !strategy) {
+  return NextResponse.json(
+    { error: "Address, purchase price, repair cost, and strategy are required." },
+    { status: 400 }
+  );
+}
+
+if (needsArv && !arv) {
+  return NextResponse.json(
+    { error: `ARV is required for a ${strategy} deal.` },
+    { status: 400 }
+  );
+}
+
+if (needsRent && !rent) {
+  return NextResponse.json(
+    { error: "Monthly rent is required for a Rental deal." },
+    { status: 400 }
+  );
+}
 
     const purchase = Number(purchasePrice);
-    const afterRepairValue = Number(arv);
-    const monthlyRent = Number(rent || 0);
-    const repairs = Number(repairCost || 0);
+const afterRepairValue = Number(arv || 0);
+const monthlyRent = Number(rent || 0);
+const repairs = Number(repairCost || 0);
 
-    if (Number.isNaN(purchase) || Number.isNaN(afterRepairValue)) {
-      return NextResponse.json(
-        { error: "Purchase price and ARV must be valid numbers." },
-        { status: 400 }
-      );
-    }
+if (Number.isNaN(purchase) || Number.isNaN(repairs)) {
+  return NextResponse.json(
+    { error: "Purchase price and repair cost must be valid numbers." },
+    { status: 400 }
+  );
+}
+
+if (needsArv && (Number.isNaN(afterRepairValue) || afterRepairValue <= 0)) {
+  return NextResponse.json(
+    { error: `ARV must be a valid number for a ${strategy} deal.` },
+    { status: 400 }
+  );
+}
+
+if (needsRent && (Number.isNaN(monthlyRent) || monthlyRent <= 0)) {
+  return NextResponse.json(
+    { error: "Monthly rent must be a valid number for a Rental deal." },
+    { status: 400 }
+  );
+}
 
     const mao = afterRepairValue * 0.7 - repairs;
     const spread = afterRepairValue - purchase - repairs;
