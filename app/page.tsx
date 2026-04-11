@@ -186,18 +186,36 @@ if (scoreGap < 6) {
   confidenceDrivers.push("Score gap between strategies is small.");
 }
 
-if (result.marginPercent < 25) {
-  confidenceDrivers.push("Margin is thin.");
-} else if (result.marginPercent <= 35) {
-  confidenceDrivers.push("Margin is moderate.");
-}
+if (result.strategy === "Flip") {
 
-if (result.mao && Number(purchasePrice) >= result.mao * 0.95) {
-  confidenceDrivers.push("Purchase price is close to MAO.");
-}
+  if (result.marginPercent < 25) {
+    confidenceDrivers.push("Margin is thin.");
+  } else if (result.marginPercent <= 35) {
+    confidenceDrivers.push("Margin is moderate.");
+  } else {
+    confidenceDrivers.push("Margin is strong.");
+  }
 
-if (result.strategy === "Rental" && result.rentToPricePercent < 10) {
-  confidenceDrivers.push("Rent-to-price ratio is not especially strong.");
+  if (result.mao && Number(purchasePrice) >= result.mao * 0.95) {
+    confidenceDrivers.push("Purchase price is close to MAO.");
+  } else {
+    confidenceDrivers.push("Purchase price is comfortably below MAO.");
+  }
+
+} else if (result.strategy === "Rental") {
+
+  if (result.rentToPricePercent < 10) {
+    confidenceDrivers.push("Rent-to-price ratio is not especially strong.");
+  } else {
+    confidenceDrivers.push("Rent-to-price ratio is solid.");
+  }
+
+  if (result.rentToPricePercent < 8) {
+    confidenceDrivers.push("Rental performance may be too thin.");
+  } else {
+    confidenceDrivers.push("Rental income supports the deal.");
+  }
+
 }
 
 if (confidenceDrivers.length === 0) {
@@ -356,14 +374,12 @@ if (result?.bestStrategy) {
 }
 
 else if (winner === "Rental") {
-  if (score >= 75) {
+  if (result.rentToPricePercent >= 12) {
     strategyRecommendation =
-      result.rentToPricePercent >= 15
-        ? "Strong rental opportunity because rent-to-price is attractive and income potential is solid."
-        : "Rental is strongest here, with decent income potential.";
-  } else if (score >= 60) {
+      "Strong rental opportunity because rent-to-price is attractive and income potential is solid.";
+  } else if (result.rentToPricePercent >= 9) {
     strategyRecommendation =
-      "Rental works, but returns are tight because rent-to-price is only moderate and expenses need review.";
+      "Rental works, but returns are still somewhat tight, so expenses and execution need review.";
   } else {
     strategyRecommendation =
       "Rental is not attractive at this price because income is too soft relative to cost.";
@@ -384,6 +400,12 @@ else if (winner === "Wholesale") {
       "Wholesale spread is too weak to rely on, even if it ranks highest among the available options.";
   }
 }
+}
+
+// 🔴 MICRO-UPGRADE: ALIGN RECOMMENDATION WITH DECISION
+if (decision === "PASS") {
+  strategyRecommendation =
+    "Even though this is the strongest available strategy, the deal does not meet minimum investment standards.";
 }
 
 return (
@@ -416,25 +438,34 @@ return (
         </h2>
 
 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-  <input
+  <label style={{ fontSize: 14, marginBottom: 4 }}>
+  Property Address
+</label>
+<input
   type="text"
-  placeholder="Property Address (e.g. 123 Main St, Houston TX)"
+  placeholder="123 Main St, Houston TX"
   value={address}
   onChange={(e) => setAddress(e.target.value)}
   className="w-full border rounded-lg p-2 mb-3"
 />
 
+<label style={{ fontSize: 14, marginBottom: 4 }}>
+  Purchase Price ($)
+</label>
 <input
   type="number"
-  placeholder="Purchase Price ($)"
+  placeholder="Enter purchase price"
   value={purchasePrice}
   onChange={(e) => setPurchasePrice(e.target.value)}
   className="w-full border rounded-lg p-2 mb-3"
 />
 
+<label style={{ fontSize: 14, marginBottom: 4 }}>
+  Try Different Purchase Price (optional)
+</label>
 <input
   type="number"
-  placeholder="Try Different Purchase Price (optional)"
+  placeholder="Enter alternate purchase price"
   value={targetPrice}
   onChange={(e) => setTargetPrice(e.target.value)}
   className="w-full border rounded-lg p-2 mb-3"
@@ -444,31 +475,43 @@ return (
   Tip: Try lowering the price to see how the deal improves.
 </p>
 
+<label style={{ fontSize: 14, marginBottom: 4 }}>
+  After Repair Value (ARV)
+</label>
 <input
   type="number"
-  placeholder="After Repair Value (ARV)"
+  placeholder="Enter ARV"
   value={arv}
   onChange={(e) => setArv(e.target.value)}
   className="w-full border rounded-lg p-2 mb-3"
 />
 
+<label style={{ fontSize: 14, marginBottom: 4 }}>
+  Estimated Monthly Rent ($)
+</label>
 <input
   type="number"
-  placeholder="Estimated Monthly Rent ($)"
+  placeholder="Enter monthly rent"
   value={rent}
   onChange={(e) => setRent(e.target.value)}
   className="w-full border rounded-lg p-2 mb-3"
 />
 
+<label style={{ fontSize: 14, marginBottom: 4 }}>
+  Estimated Repair Cost ($)
+</label>
 <input
   type="number"
-  placeholder="Estimated Repair Cost ($)"
+  placeholder="Enter repair cost"
   value={repairCost}
   onChange={(e) => setRepairCost(e.target.value)}
   className="w-full border rounded-lg p-2 mb-3"
- />
+/>
 
-  <select
+  <label style={{ fontSize: 14, marginBottom: 4 }}>
+  Deal Strategy
+</label>
+<select
   value={strategy}
   onChange={(e) => setStrategy(e.target.value)}
   style={{
@@ -484,18 +527,21 @@ return (
   <option value="Wholesale">Wholesale</option>
 </select>
 
-  <textarea
-    placeholder="Notes / situation"
-    value={notes}
-    onChange={(e) => setNotes(e.target.value)}
-    rows={4}
-    style={{
-      padding: 12,
-      borderRadius: 8,
-      border: "1px solid #ccc",
-      fontSize: 16,
-    }}
-  />
+  <label style={{ fontSize: 14, marginBottom: 4 }}>
+  Notes / Situation
+</label>
+<textarea
+  placeholder="Add context about the deal..."
+  value={notes}
+  onChange={(e) => setNotes(e.target.value)}
+  rows={4}
+  style={{
+    padding: 12,
+    borderRadius: 8,
+    border: "1px solid #ccc",
+    fontSize: 16,
+  }}
+/>
 </div>
 
 <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
@@ -578,10 +624,15 @@ return (
   color: dealToneText,
 }}
   >
-    <strong>Best Strategy: {result.bestStrategy.strategy}</strong>
-    <p style={{ margin: "6px 0 0 0" }}>
-      Score: {result.bestStrategy.score}
-    </p>
+    <div style={{ marginBottom: 12, fontSize: 18, fontWeight: 600 }}>
+  <div>
+    Best Strategy: {result.bestStrategy.strategy}
+  </div>
+
+  <div style={{ marginTop: 4 }}>
+    Score: {result.bestStrategy.score}
+  </div>
+</div>
   </div>
 )}
 
@@ -610,20 +661,36 @@ return (
 </p>
 
 <p style={{ marginBottom: 8 }}>
-  <strong>Decision:</strong>{" "}
+  <strong>Investor Decision:</strong>{" "}
   <span
-    style={{
-      color:
-        decision === "BUY"
-          ? "#166534"
-          : decision === "NEGOTIATE"
-          ? "#92400e"
-          : "#991b1b",
-      fontWeight: 600,
-    }}
-  >
-    {decision}
-  </span>
+  style={{
+    display: "inline-block",
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontWeight: 600,
+    fontSize: 14,
+    background:
+      decision === "BUY"
+        ? "#dcfce7"
+        : decision === "NEGOTIATE"
+        ? "#fef3c7"
+        : "#fee2e2",
+    color:
+      decision === "BUY"
+        ? "#166534"
+        : decision === "NEGOTIATE"
+        ? "#92400e"
+        : "#991b1b",
+    border:
+      decision === "BUY"
+        ? "1px solid #86efac"
+        : decision === "NEGOTIATE"
+        ? "1px solid #fcd34d"
+        : "1px solid #fca5a5",
+  }}
+>
+  {decision}
+</span>
 </p>
 
 <p style={{ marginBottom: 8 }}>
