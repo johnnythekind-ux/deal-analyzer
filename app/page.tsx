@@ -286,8 +286,8 @@ if (decision === "BUY") {
 
   negotiationGuidance =
     result.mao >= purchase
-      ? "This deal is priced below your target threshold. You may have room to move quickly and preserve margin."
-      : "This deal is above your target threshold. Try to negotiate down before moving forward.";
+      ? "This deal is priced below your target. You may have room to move quickly and secure favorable terms."
+      : "This deal is slightly above your target. You can proceed, but improving the price will strengthen the deal.";
 } else if (decision === "NEGOTIATE") {
   decisionReason = "Deal has potential, but needs better entry price or improved terms.";
 
@@ -299,8 +299,8 @@ if (decision === "BUY") {
 
   negotiationGuidance =
     result.mao >= purchase
-      ? "This deal appears to be priced below your target threshold, but execution risk still needs review."
-      : "This deal is above your target threshold. Negotiate the purchase price down or improve terms before moving forward.";
+      ? "This deal is near your target, but execution risk still needs review before proceeding."
+      : "This deal is above your target. Focus on negotiating a better purchase price or stronger terms.";
 } else {
   decisionReason = "Risk outweighs reward based on current numbers.";
 
@@ -312,8 +312,8 @@ if (decision === "BUY") {
 
   negotiationGuidance =
     result.mao >= purchase
-      ? "Even though price may be below the target threshold, the overall deal quality is still too weak."
-      : "This deal appears to be priced above your target threshold. The numbers do not currently justify moving forward.";
+      ? "Even though the price may be acceptable, the overall deal quality is too weak to justify moving forward."
+      : "This deal is significantly above your target and does not meet your investment criteria. Walking away is likely the best decision.";
 }
 
 // TARGET PRICE ENGINE
@@ -770,17 +770,57 @@ return (
   </div>
 </div>
 
-<p style={{ marginBottom: 8 }}>
-  <strong>Target Price:</strong> {targetPriceText}
+<div
+  style={{
+  marginBottom: 14,
+  padding: 14,
+  borderRadius: 12,
+  border:
+    decision === "BUY"
+      ? "1px solid #bbf7d0"
+      : decision === "NEGOTIATE"
+      ? "1px solid #fde68a"
+      : "1px solid #fecaca",
+  background:
+    decision === "BUY"
+      ? "#f0fdf4"
+      : decision === "NEGOTIATE"
+      ? "#fffbeb"
+      : "#fef2f2",
+}}
+>
+
+  <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>
+  Based on your inputs, here’s how the pricing compares to your target thresholds.
 </p>
 
-<p style={{ marginBottom: 8 }}>
-  <strong>Price Gap:</strong> {priceGapText}
-</p>
+  <div
+    style={{
+      fontSize: 12,
+      fontWeight: 600,
+      color: "#6b7280",
+      marginBottom: 8,
+      textTransform: "uppercase",
+      letterSpacing: "0.04em",
+    }}
+  >
+    Deal Pricing Insight
+  </div>
 
-<p style={{ marginBottom: 8 }}>
-  <strong>Negotiation Guidance:</strong> {negotiationGuidance}
-</p>
+  <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+    <p style={{ marginBottom: 8 }}>
+      <strong>Target Price:</strong> {targetPriceText}
+    </p>
+
+    <p style={{ marginBottom: 8 }}>
+      <strong>Price Gap:</strong> {priceGapText}
+    </p>
+
+    <p style={{ marginBottom: 0 }}>
+      <strong>Negotiation Guidance:</strong> {negotiationGuidance}
+    </p>
+  </div>
+</div>
 
 <p style={{ marginBottom: 8 }}>
   <strong>Confidence Reason:</strong> {confidenceExplanation}
