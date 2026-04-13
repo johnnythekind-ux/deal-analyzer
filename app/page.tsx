@@ -273,17 +273,51 @@ if (result.score >= 80 && confidenceLabel === "High") {
   decision = "PASS";
 }
 
+const purchase = Number(purchasePrice);
+
 if (decision === "BUY") {
   decisionReason = "Strong metrics and clear strategic advantage.";
+
+  targetPriceText = `$${Math.round(result.mao).toLocaleString()}`;
+  priceGapText =
+    result.mao >= purchase
+      ? `$${Math.round(result.mao - purchase).toLocaleString()} below target`
+      : `$${Math.round(purchase - result.mao).toLocaleString()} above target`;
+
+  negotiationGuidance =
+    result.mao >= purchase
+      ? "This deal is priced below your target threshold. You may have room to move quickly and preserve margin."
+      : "This deal is above your target threshold. Try to negotiate down before moving forward.";
 } else if (decision === "NEGOTIATE") {
   decisionReason = "Deal has potential, but needs better entry price or improved terms.";
+
+  targetPriceText = `$${Math.round(result.mao).toLocaleString()}`;
+  priceGapText =
+    result.mao >= purchase
+      ? `$${Math.round(result.mao - purchase).toLocaleString()} below target`
+      : `$${Math.round(purchase - result.mao).toLocaleString()} above target`;
+
+  negotiationGuidance =
+    result.mao >= purchase
+      ? "This deal appears to be priced below your target threshold, but execution risk still needs review."
+      : "This deal is above your target threshold. Negotiate the purchase price down or improve terms before moving forward.";
 } else {
   decisionReason = "Risk outweighs reward based on current numbers.";
+
+  targetPriceText = `$${Math.round(result.mao).toLocaleString()}`;
+  priceGapText =
+    result.mao >= purchase
+      ? `$${Math.round(result.mao - purchase).toLocaleString()} below target`
+      : `$${Math.round(purchase - result.mao).toLocaleString()} above target`;
+
+  negotiationGuidance =
+    result.mao >= purchase
+      ? "Even though price may be below the target threshold, the overall deal quality is still too weak."
+      : "This deal appears to be priced above your target threshold. The numbers do not currently justify moving forward.";
 }
 
 // TARGET PRICE ENGINE
 
-const purchase = Number(purchasePrice);
 const mao = result?.mao ? Number(result.mao) : null;
 const rentNumber = rent ? Number(rent) : null;
 
@@ -719,9 +753,22 @@ return (
 </span>
 </p>
 
-<p style={{ marginBottom: 8 }}>
-  <strong>Decision Reason:</strong> {decisionReason}
-</p>
+<div
+  style={{
+    marginBottom: 14,
+    padding: "10px 12px",
+    borderRadius: 10,
+    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+  }}
+>
+  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, color: "#374151" }}>
+    Decision Reason
+  </div>
+  <div style={{ fontSize: 15, lineHeight: 1.5, color: "#111827" }}>
+    {decisionReason}
+  </div>
+</div>
 
 <p style={{ marginBottom: 8 }}>
   <strong>Target Price:</strong> {targetPriceText}
