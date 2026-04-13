@@ -278,42 +278,11 @@ const purchase = Number(purchasePrice);
 if (decision === "BUY") {
   decisionReason = "Strong metrics and clear strategic advantage.";
 
-  targetPriceText = `$${Math.round(result.mao).toLocaleString()}`;
-  priceGapText =
-    result.mao >= purchase
-      ? `$${Math.round(result.mao - purchase).toLocaleString()} below target`
-      : `$${Math.round(purchase - result.mao).toLocaleString()} above target`;
-
-  negotiationGuidance =
-    result.mao >= purchase
-      ? "This deal is priced below your target. You may have room to move quickly and secure favorable terms."
-      : "This deal is slightly above your target. You can proceed, but improving the price will strengthen the deal.";
 } else if (decision === "NEGOTIATE") {
   decisionReason = "Deal has potential, but needs better entry price or improved terms.";
 
-  targetPriceText = `$${Math.round(result.mao).toLocaleString()}`;
-  priceGapText =
-    result.mao >= purchase
-      ? `$${Math.round(result.mao - purchase).toLocaleString()} below target`
-      : `$${Math.round(purchase - result.mao).toLocaleString()} above target`;
-
-  negotiationGuidance =
-    result.mao >= purchase
-      ? "This deal is near your target, but execution risk still needs review before proceeding."
-      : "This deal is above your target. Focus on negotiating a better purchase price or stronger terms.";
 } else {
   decisionReason = "Risk outweighs reward based on current numbers.";
-
-  targetPriceText = `$${Math.round(result.mao).toLocaleString()}`;
-  priceGapText =
-    result.mao >= purchase
-      ? `$${Math.round(result.mao - purchase).toLocaleString()} below target`
-      : `$${Math.round(purchase - result.mao).toLocaleString()} above target`;
-
-  negotiationGuidance =
-    result.mao >= purchase
-      ? "Even though the price may be acceptable, the overall deal quality is too weak to justify moving forward."
-      : "This deal is significantly above your target and does not meet your investment criteria. Walking away is likely the best decision.";
 }
 
 // TARGET PRICE ENGINE
