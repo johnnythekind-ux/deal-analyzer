@@ -791,6 +791,8 @@ return (
   </div>
 </div>
 
+{decision !== "PASS" && (
+  <>
 <p style={{ marginBottom: 8 }}>
   <strong>Confidence Reason:</strong> {confidenceExplanation}
 </p>
@@ -819,6 +821,9 @@ return (
     {dealLabel}
   </span>
 </p>
+
+    </>
+)}
 
 {showComparison && baselineResult && (
   <div
