@@ -97,6 +97,21 @@ It is part of a larger system roadmap toward:
 
 ---
 
+## 📊 Live Deal Analysis Examples
+
+### 🟢 Strong Deal → BUY
+![Buy Example](public/screenshots/Buy.png)
+
+---
+
+### 🟡 Borderline Deal (NEGOTIATE)
+![Negotiate Example](public/screenshots/Negotiate.png)
+
+---
+
+### 🔴 Weak Deal (PASS)
+![Pass Example](public/screenshots/Pass.png)
+
 ## Local Development
 
 ```bash
