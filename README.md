@@ -102,3 +102,10 @@ It is part of a larger system roadmap toward:
 ```bash
 npm install
 npm run dev
+
+---
+
+## Author
+
+Johnny Groves  
+Digital Product Builder · AI-Assisted Systems
