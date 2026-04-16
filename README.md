@@ -105,7 +105,7 @@ It is part of a larger system roadmap toward:
 ---
 
 ### 🟡 Borderline Deal (NEGOTIATE)
-![Negotiate Example](public/screenshots/Negotiate.png)
+![Negotiate Example](public/screenshots/negotiate.png)
 
 ---
 
