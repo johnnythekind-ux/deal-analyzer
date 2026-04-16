@@ -147,6 +147,8 @@ let confidenceExplanation = "";
 let confidenceDrivers: string[] = [];
 let decision = "";
 let decisionReason = "";
+let isPass = false;
+let isNegotiate = false;
 
 let targetPriceText = "";
 let priceGapText = "";
@@ -290,12 +292,17 @@ if (decision === "BUY") {
 const mao = result?.mao ? Number(result.mao) : null;
 const rentNumber = rent ? Number(rent) : null;
 
-if (strategy === "Flip" && mao && purchase) {
-  const gap = mao - purchase;
+if (strategy === "Flip" && mao !== null && purchase) {
+  const safeTarget = Math.max(0, Math.round(mao));
+  const gap = safeTarget - purchase;
 
-  targetPriceText = `$${mao.toLocaleString()}`;
+  targetPriceText = `$${safeTarget.toLocaleString()}`;
 
-  if (gap > 0) {
+  if (safeTarget === 0) {
+    priceGapText = `No viable target at current assumptions`;
+    negotiationGuidance =
+      "This deal is too weak under the current numbers. Rework the purchase price, ARV, or repair assumptions before moving forward.";
+  } else if (gap > 0) {
     priceGapText = `$${gap.toLocaleString()} below target`;
     negotiationGuidance =
       "This deal is priced below your target threshold. You may have room to move quickly and preserve margin.";
@@ -308,19 +315,25 @@ if (strategy === "Flip" && mao && purchase) {
     negotiationGuidance =
       "This deal is right at your target threshold. Proceed carefully and confirm your assumptions before committing.";
   }
-} else if (strategy === "Rental" && rentNumber && purchase) {
+}
+ else if (strategy === "Rental" && rentNumber && purchase) {
   const annualRent = rentNumber * 12;
-  const rentalTarget = annualRent / 0.1;
-  const gap = rentalTarget - purchase;
+  const rentalTargetRaw = annualRent / 0.1;
+  const safeTarget = Math.max(0, Math.round(rentalTargetRaw));
+  const gap = safeTarget - purchase;
 
-  targetPriceText = `$${Math.round(rentalTarget).toLocaleString()}`;
+  targetPriceText = `$${safeTarget.toLocaleString()}`;
 
-  if (gap > 0) {
-    priceGapText = `$${Math.round(gap).toLocaleString()} below target`;
+  if (safeTarget === 0) {
+    priceGapText = `No viable target at current assumptions`;
+    negotiationGuidance =
+      "This rental does not support a workable price under the current assumptions. Review rent, repairs, taxes, insurance, and vacancy before moving forward.";
+  } else if (gap > 0) {
+    priceGapText = `$${gap.toLocaleString()} below target`;
     negotiationGuidance =
       "This rental appears to be priced below the rent-based target. The cash-flow setup may be favorable if expenses and condition hold up.";
   } else if (gap < 0) {
-    priceGapText = `$${Math.round(Math.abs(gap)).toLocaleString()} above target`;
+    priceGapText = `$${Math.abs(gap).toLocaleString()} above target`;
     negotiationGuidance =
       "This rental appears to be priced above the rent-based target. Consider negotiating harder or reassessing projected cash flow.";
   } else {
@@ -328,6 +341,7 @@ if (strategy === "Flip" && mao && purchase) {
     negotiationGuidance =
       "This rental is landing right on the rent-based target. Review taxes, insurance, repairs, and vacancy assumptions before proceeding.";
   }
+
 }
 
     if (runnerUp) {
@@ -424,6 +438,9 @@ if (decision === "PASS") {
   strategyRecommendation =
     "Even though this is the strongest available strategy, the deal does not meet minimum investment standards.";
 }
+
+isPass = decision === "PASS";
+isNegotiate = decision === "NEGOTIATE";
 
 return (
     <main
@@ -618,370 +635,423 @@ return (
   </div>
 )}
   {!result ? (
-
-      <div className="space-y-1">
-  <p className="text-sm font-semibold text-gray-900">
-    Start your analysis
-  </p>
-  <p className="text-sm text-gray-600">
-    Fill out the deal details above and click “Analyze Deal” to see insights, strategy recommendations, and pricing guidance.
-  </p>
-</div>
-  
-  ) : (
-    <>
-   <div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  }}
->
-  <strong>Analysis Result</strong>
-  <span>Score: {result.score}</span>
-</div>
-
-{result.bestStrategy && (
-  <div
-    style={{
-  marginBottom: 16,
-  padding: 14,
-  borderRadius: 8,
-  background: dealToneBg,
-  border: `1px solid ${dealToneBorder}`,
-  color: dealToneText,
-}}
-  >
-    <div style={{ marginBottom: 12, fontSize: 18, fontWeight: 600 }}>
+  <div className="space-y-1">
+    <p className="text-sm font-semibold text-gray-900">
+      Start your analysis
+    </p>
+    <p className="text-sm text-gray-600">
+      Fill out the deal details above and click “Analyze Deal” to see insights, strategy recommendations, and pricing guidance.
+    </p>
+  </div>
+) : (
   <div>
-    Best Strategy: {result.bestStrategy.strategy}
-  </div>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 12,
+      }}
+    >
+      <strong>Analysis Result</strong>
+      <span>Score: {result.score}</span>
+    </div>
 
-  <div style={{ marginTop: 4 }}>
-    Score: {result.bestStrategy.score}
-  </div>
-</div>
-  </div>
+    {result.bestStrategy && !isPass && (
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 14,
+          borderRadius: 8,
+          background: dealToneBg,
+          border: `1px solid ${dealToneBorder}`,
+          color: dealToneText,
+        }}
+      >
+        <div style={{ marginBottom: 12, fontSize: 18, fontWeight: 600 }}>
+          <div>Best Strategy: {result.bestStrategy.strategy}</div>
+          <div style={{ marginTop: 4 }}>
+            Score: {result.bestStrategy.score}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {winnerExplanation && !isPass && (
+      <div
+        style={{
+          marginTop: 16,
+          marginBottom: 12,
+          padding: 12,
+          borderRadius: 10,
+          background: "#f8fafc",
+          border: "1px solid #e5e7eb",
+          fontSize: 15,
+          lineHeight: 1.5,
+        }}
+      >
+        <strong>Why this strategy won:</strong> {winnerExplanation}
+      </div>
+    )}
+
+    {!isPass && (
+  <p style={{ marginBottom: 8 }}>
+    <strong>Strategy:</strong> {result.strategy}
+  </p>
 )}
 
-{winnerExplanation && (
-  <div
-    style={{
-      marginTop: 16,
-      padding: 12,
-      borderRadius: 10,
-      background: "#f8fafc",
-      border: "1px solid #e5e7eb",
-      fontSize: 15,
-      lineHeight: 1.5,
-    }}
-  >
-    <strong>Why this strategy won:</strong> {winnerExplanation}
-  </div>
+    {!isPass && (
+  <p style={{ marginBottom: 8 }}>
+    <strong>Confidence:</strong> {confidenceLabel}
+  </p>
 )}
-
-<p style={{ marginBottom: 8 }}>
-  <strong>Strategy:</strong> {result.strategy}
-</p>
-
-<p style={{ marginBottom: 8 }}>
-  <strong>Confidence:</strong> {confidenceLabel}
-</p>
-
-<p style={{ marginBottom: 8 }}>
-  <strong>Investor Decision:</strong>{" "}
-  <span
-  style={{
-    display: "inline-block",
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontWeight: 600,
-    fontSize: 14,
-    background:
-      decision === "BUY"
-        ? "#dcfce7"
-        : decision === "NEGOTIATE"
-        ? "#fef3c7"
-        : "#fee2e2",
-    color:
-      decision === "BUY"
-        ? "#166534"
-        : decision === "NEGOTIATE"
-        ? "#92400e"
-        : "#991b1b",
-    border:
-      decision === "BUY"
-        ? "1px solid #86efac"
-        : decision === "NEGOTIATE"
-        ? "1px solid #fcd34d"
-        : "1px solid #fca5a5",
-  }}
->
-  {decision}
-</span>
-</p>
-
-<div
-  style={{
-    marginBottom: 14,
-    padding: "10px 12px",
-    borderRadius: 10,
-    background: "#f8fafc",
-    border: "1px solid #e5e7eb",
-  }}
->
-  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, color: "#374151" }}>
-    Decision Reason
-  </div>
-  <div style={{ fontSize: 15, lineHeight: 1.5, color: "#111827" }}>
-    {decisionReason}
-  </div>
-</div>
-
-<div
-  style={{
-  marginBottom: 14,
-  padding: 14,
-  borderRadius: 12,
-  border:
-    decision === "BUY"
-      ? "1px solid #bbf7d0"
-      : decision === "NEGOTIATE"
-      ? "1px solid #fde68a"
-      : "1px solid #fecaca",
-  background:
-    decision === "BUY"
-      ? "#f0fdf4"
-      : decision === "NEGOTIATE"
-      ? "#fffbeb"
-      : "#fef2f2",
-}}
->
-
-  <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>
-  Based on your inputs, here’s how the pricing compares to your target thresholds.
-</p>
-
-  <div
-    style={{
-      fontSize: 12,
-      fontWeight: 600,
-      color: "#6b7280",
-      marginBottom: 8,
-      textTransform: "uppercase",
-      letterSpacing: "0.04em",
-    }}
-  >
-    Deal Pricing Insight
-  </div>
-
-  <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-    <p style={{ marginBottom: 8 }}>
-      <strong>Target Price:</strong> {targetPriceText}
-    </p>
 
     <p style={{ marginBottom: 8 }}>
-      <strong>Price Gap:</strong> {priceGapText}
+      <strong>Investor Decision:</strong>{" "}
+      <span
+        style={{
+          display: "inline-block",
+          padding: "4px 10px",
+          borderRadius: 999,
+          fontWeight: 600,
+          fontSize: 14,
+          background:
+            decision === "BUY"
+              ? "#dcfce7"
+              : decision === "NEGOTIATE"
+              ? "#fef3c7"
+              : "#fee2e2",
+          color:
+            decision === "BUY"
+              ? "#166534"
+              : decision === "NEGOTIATE"
+              ? "#92400e"
+              : "#991b1b",
+          border:
+            decision === "BUY"
+              ? "1px solid #86efac"
+              : decision === "NEGOTIATE"
+              ? "1px solid #fcd34d"
+              : "1px solid #fca5a5",
+        }}
+      >
+        {decision}
+      </span>
     </p>
 
-    <p style={{ marginBottom: 0 }}>
-      <strong>Negotiation Guidance:</strong> {negotiationGuidance}
-    </p>
-  </div>
-</div>
+    <div
+      style={{
+        marginBottom: 14,
+        padding: "10px 12px",
+        borderRadius: 10,
+        background: "#f8fafc",
+        border: "1px solid #e5e7eb",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          marginBottom: 4,
+          color: "#374151",
+        }}
+      >
+        Decision Reason
+      </div>
+      <div style={{ fontSize: 15, lineHeight: 1.5, color: "#111827" }}>
+        {decisionReason}
+      </div>
+    </div>
 
-{decision !== "PASS" && (
-  <>
-<p style={{ marginBottom: 8 }}>
-  <strong>Confidence Reason:</strong> {confidenceExplanation}
-</p>
+    <div
+      style={{
+        marginBottom: 14,
+        padding: 14,
+        borderRadius: 12,
+        border:
+          decision === "BUY"
+            ? "1px solid #bbf7d0"
+            : decision === "NEGOTIATE"
+            ? "1px solid #fde68a"
+            : "1px solid #fecaca",
+        background:
+          decision === "BUY"
+            ? "#f0fdf4"
+            : decision === "NEGOTIATE"
+            ? "#fffbeb"
+            : "#fef2f2",
+      }}
+    >
+      <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 6 }}>
+        Based on your inputs, here’s how the pricing compares to your target thresholds.
+      </p>
 
-<div style={{ marginBottom: 8 }}>
-  <strong>Confidence Drivers:</strong>
-  <ul style={{ marginTop: 6, marginBottom: 0, paddingLeft: 20 }}>
-    {confidenceDrivers.map((driver, index) => (
-      <li key={index}>{driver}</li>
-    ))}
-  </ul>
-</div>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: "#6b7280",
+          marginBottom: 8,
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
+        }}
+      >
+        Deal Pricing Insight
+      </div>
 
-<p style={{ marginBottom: 8 }}>
-  <strong>Risk:</strong> {result.risk}
-</p>
+      <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+        <p style={{ marginBottom: 8 }}>
+          <strong>Target Price:</strong> {targetPriceText}
+        </p>
 
-<p style={{ marginBottom: 8 }}>
-  <strong>Deal Quality:</strong>{" "}
-  <span
-    style={{
-      color: dealToneText,
-      fontWeight: 600,
-    }}
-  >
-    {dealLabel}
-  </span>
-</p>
+        <p style={{ marginBottom: 8 }}>
+          <strong>Price Gap:</strong> {priceGapText}
+        </p>
 
-    </>
-)}
+        <p style={{ marginBottom: 0 }}>
+          <strong>Negotiation Guidance:</strong> {negotiationGuidance}
+        </p>
+      </div>
+    </div>
 
-{showComparison && baselineResult && (
-  <div
-    style={{
-      marginBottom: 16,
-      padding: 12,
-      borderRadius: 8,
-      background: "#f6f8fb",
-      border: "1px solid #d9e2f0",
-    }}
-  >
-    <strong style={{ display: "block", marginBottom: 8 }}>
-      Before vs After
-    </strong>
-
-    <p style={{ marginBottom: 6 }}>
-      <strong>Purchase Price:</strong> ${Number(originalPrice).toLocaleString()} → ${Number(targetPrice).toLocaleString()}
-    </p>
-
-    <p style={{ marginBottom: 6 }}>
-      <strong>Score:</strong> {baselineResult.score} → {result.score}
-    </p>
-
-    <p style={{ marginBottom: 6 }}>
-      <strong>Spread:</strong> ${baselineResult.spread.toLocaleString()} → ${result.spread.toLocaleString()}
-    </p>
-
-    <p style={{ marginBottom: 6 }}>
-      <strong>Margin:</strong> {baselineResult.marginPercent.toFixed(1)}% → {result.marginPercent.toFixed(1)}%
-    </p>
-
-    <p style={{ marginBottom: 0 }}>
-      <strong>Risk:</strong> {baselineResult.risk} → {result.risk}
-    </p>
-  </div>
-)}
-
-<div
+    {isPass ? (
+      <div
+        style={{
+          marginBottom: 12,
+          padding: 12,
+          borderRadius: 8,
+          background: "#fef2f2",
+          border: "1px solid #fecaca",
+        }}
+      >
+        <strong style={{ display: "block", marginBottom: 6, color: "#991b1b" }}>
+  Why this deal fails:
+</strong>
+        <span style={{ color: "#7f1d1d" }}>
+          {(result.signals ?? []).slice(0, 2).join(" • ") ||
+            "Weak deal fundamentals based on current pricing and projected returns."}
+        </span>
+      </div>
+    ) : (
+      <>
+      <div
   style={{
     marginBottom: 12,
     padding: 12,
     borderRadius: 8,
-    background: "#f8f8f8",
+    background: isNegotiate ? "#fffbeb" : "#f0fdf4",
+    border: isNegotiate ? "1px solid #fde68a" : "1px solid #bbf7d0",
   }}
 >
-  {result.strategy === "Flip" && (
-    <>
-      <p style={{ marginBottom: 6 }}>
-        <strong>MAO:</strong> ${result.mao.toLocaleString()}
-      </p>
-
-      <p style={{ marginBottom: 6 }}>
-        <strong>Spread:</strong> ${result.spread.toLocaleString()}
-      </p>
-
-      <p style={{ marginBottom: 0 }}>
-        <strong>Margin:</strong> {result.marginPercent.toFixed(1)}%
-      </p>
-    </>
-  )}
-
-  {result.strategy === "Rental" && (
-    <>
-      <p style={{ marginBottom: 6 }}>
-        <strong>Annual Rent:</strong> $
-        {(result.rentToPricePercent > 0
-          ? Math.round((result.rentToPricePercent / 100) * Number(purchasePrice))
-          : 0
-        ).toLocaleString()}
-      </p>
-
-      <p style={{ marginBottom: 0 }}>
-        <strong>Rent-to-Price:</strong> {result.rentToPricePercent.toFixed(1)}%
-      </p>
-    </>
-  )}
-
-  {result.strategy === "Wholesale" && (
-    <>
-      <p style={{ marginBottom: 6 }}>
-        <strong>Discount to ARV:</strong> {result.discountPercent.toFixed(1)}%
-      </p>
-
-      <p style={{ marginBottom: 0 }}>
-        <strong>Spread:</strong> ${result.spread.toLocaleString()}
-      </p>
-    </>
-  )}
-</div>
-
-<div
-  style={{
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 8,
-    background: "#f8f8f8",
-  }}
->
-  <strong style={{ display: "block", marginBottom: 8 }}>Why This Deal Scores This Way</strong>
-
-  <ul style={{ margin: 0, paddingLeft: 20 }}>
-    {(result.signals ?? []).map((signal) => (
-      <li key={signal} style={{ marginBottom: 4 }}>
-        {signal}
-      </li>
-    ))}
-  </ul>
-</div>
-
-{improvementMessage && (
-  <div style={{
-    marginTop: 12,
-    padding: 10,
-    borderRadius: 6,
-    background: "#e6f4ea",
-    border: "1px solid #b7e1cd"
-  }}>
-    <strong>Scenario Insight</strong>
-    <p style={{ marginTop: 4 }}>{improvementMessage}</p>
-  </div>
-)}
-
-{result.insight && (
-  <div
+  <strong
     style={{
-      marginBottom: 12,
-      padding: 12,
-      borderRadius: 8,
-      background: "#eef6ff",
+      display: "block",
+      marginBottom: 6,
+      color: isNegotiate ? "#92400e" : "#166534",
     }}
   >
-    <strong style={{ display: "block", marginBottom: 6 }}>
-      Insight
-    </strong>
-    <span>{result.insight}</span>
-  </div>
-)}
-
-<p style={{ marginBottom: 8 }}>
-  {result.summary}
-</p>
-
-<div
-  style={{
-    padding: 12,
-    borderRadius: 8,
-    background: "#f4f4f4",
-  }}
->
-  <strong style={{ display: "block", marginBottom: 6 }}>
-    Recommendation:
+    {isNegotiate ? "What to watch:" : "Why this deal works:"}
   </strong>
-  {strategyRecommendation}
-</div>   
-    </>
-  )}
+  <span style={{ color: isNegotiate ? "#78350f" : "#166534" }}>
+    {(result.signals ?? []).slice(0, 2).join(" • ") ||
+      "Review the key signals driving this opportunity."}
+  </span>
 </div>
-      </section>
-    </main>
-  );
+        <p style={{ marginBottom: 8 }}>
+          <strong>Confidence Reason:</strong> {confidenceExplanation}
+        </p>
+
+        <div style={{ marginBottom: 8 }}>
+          <strong>Confidence Drivers:</strong>
+          <ul style={{ marginTop: 6, marginBottom: 0, paddingLeft: 20 }}>
+            {confidenceDrivers.map((driver, index) => (
+              <li key={index}>{driver}</li>
+            ))}
+          </ul>
+        </div>
+
+        <p style={{ marginBottom: 8 }}>
+          <strong>Risk:</strong> {result.risk}
+        </p>
+
+        <p style={{ marginBottom: 8 }}>
+          <strong>Deal Quality:</strong>{" "}
+          <span
+            style={{
+              color: dealToneText,
+              fontWeight: 600,
+            }}
+          >
+            {dealLabel}
+          </span>
+        </p>
+
+        {showComparison && baselineResult && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              borderRadius: 8,
+              background: "#f6f8fb",
+              border: "1px solid #d9e2f0",
+            }}
+          >
+            <strong style={{ display: "block", marginBottom: 8 }}>
+              Before vs After
+            </strong>
+
+            <p style={{ marginBottom: 6 }}>
+              <strong>Purchase Price:</strong> $
+              {Number(originalPrice).toLocaleString()} → $
+              {Number(targetPrice).toLocaleString()}
+            </p>
+
+            <p style={{ marginBottom: 6 }}>
+              <strong>Score:</strong> {baselineResult.score} → {result.score}
+            </p>
+
+            <p style={{ marginBottom: 6 }}>
+              <strong>Spread:</strong> ${baselineResult.spread.toLocaleString()} → $
+              {result.spread.toLocaleString()}
+            </p>
+
+            <p style={{ marginBottom: 6 }}>
+              <strong>Margin:</strong> {baselineResult.marginPercent.toFixed(1)}% →{" "}
+              {result.marginPercent.toFixed(1)}%
+            </p>
+
+            <p style={{ marginBottom: 0 }}>
+              <strong>Risk:</strong> {baselineResult.risk} → {result.risk}
+            </p>
+          </div>
+        )}
+
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 12,
+            borderRadius: 8,
+            background: "#f8f8f8",
+          }}
+        >
+          {result.strategy === "Flip" && (
+            <>
+              <p style={{ marginBottom: 6 }}>
+                <strong>MAO:</strong> ${result.mao.toLocaleString()}
+              </p>
+
+              <p style={{ marginBottom: 6 }}>
+                <strong>Spread:</strong> ${result.spread.toLocaleString()}
+              </p>
+
+              <p style={{ marginBottom: 0 }}>
+                <strong>Margin:</strong> {result.marginPercent.toFixed(1)}%
+              </p>
+            </>
+          )}
+
+          {result.strategy === "Rental" && (
+            <>
+              <p style={{ marginBottom: 6 }}>
+                <strong>Annual Rent:</strong> $
+                {(result.rentToPricePercent > 0
+                  ? Math.round((result.rentToPricePercent / 100) * Number(purchasePrice))
+                  : 0
+                ).toLocaleString()}
+              </p>
+
+              <p style={{ marginBottom: 0 }}>
+                <strong>Rent-to-Price:</strong> {result.rentToPricePercent.toFixed(1)}%
+              </p>
+            </>
+          )}
+
+          {result.strategy === "Wholesale" && (
+            <>
+              <p style={{ marginBottom: 6 }}>
+                <strong>Discount to ARV:</strong> {result.discountPercent.toFixed(1)}%
+              </p>
+
+              <p style={{ marginBottom: 0 }}>
+                <strong>Spread:</strong> ${result.spread.toLocaleString()}
+              </p>
+            </>
+          )}
+        </div>
+
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 12,
+            borderRadius: 8,
+            background: "#f8f8f8",
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 8 }}>
+            Why This Deal Scores This Way
+          </strong>
+
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {(result.signals ?? []).map((signal) => (
+              <li key={signal} style={{ marginBottom: 4 }}>
+                {signal}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {improvementMessage && (
+          <div
+            style={{
+              marginTop: 12,
+              marginBottom: 12,
+              padding: 10,
+              borderRadius: 6,
+              background: "#e6f4ea",
+              border: "1px solid #b7e1cd",
+            }}
+          >
+            <strong>Scenario Insight</strong>
+            <p style={{ marginTop: 4, marginBottom: 0 }}>{improvementMessage}</p>
+          </div>
+        )}
+
+        {result.insight && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: 12,
+              borderRadius: 8,
+              background: "#eef6ff",
+            }}
+          >
+            <strong style={{ display: "block", marginBottom: 6 }}>
+              Insight
+            </strong>
+            <span>{result.insight}</span>
+          </div>
+        )}
+
+        <p style={{ marginBottom: 8 }}>{result.summary}</p>
+
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 8,
+            background: "#f4f4f4",
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 6 }}>
+            Recommendation:
+          </strong>
+          {strategyRecommendation}
+        </div>
+      </>
+    )}
+</div>
+)}
+</div>
+</section>
+</main>
+);
 }
